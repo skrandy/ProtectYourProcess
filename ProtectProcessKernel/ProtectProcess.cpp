@@ -89,7 +89,6 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING)
 			ObUnRegisterCallbacks(&g_Data.RegHandle);
 	}
 	//提前预防出问题
-
 	DriverObject->DriverUnload = ProcessProtectUnload;
 	DriverObject->MajorFunction[IRP_MJ_CREATE] = ProcessProtectCreateClose;
 	DriverObject->MajorFunction[IRP_MJ_CLOSE] = ProcessProtectCreateClose;
