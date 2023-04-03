@@ -27,7 +27,6 @@ Globals g_Data;
 extern "C"
 NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING)
 {
-	DbgBreakPoint();
 	KdPrint(("Welcome to ProtectProcess Kernel"));
 	//初始化全局变量结构体
 	g_Data.Init();

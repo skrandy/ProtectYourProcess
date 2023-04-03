@@ -6,7 +6,6 @@ VOID UtilBreakLink(PLIST_ENTRY pListEntry);
 
 NTSTATUS BreakProcessLink(ULONGLONG pid)
 {
-	DbgBreakPoint();
 	NTSTATUS status = STATUS_UNSUCCESSFUL;
 	PEPROCESS tempPEprocess = { 0 };
 	ULONG_PTR listEntryOffset = 0;
