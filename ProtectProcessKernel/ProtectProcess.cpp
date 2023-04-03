@@ -2,7 +2,7 @@
 #include"ProtectProcess.h"
 #include"ProtectProcessCommon.h"
 #include"AutoLock.h"
-
+#include"BreakProcessLink.h"
 OB_PREOP_CALLBACK_STATUS OnPreOpenProcess(PVOID RegistrationContext,
 	POB_PRE_OPERATION_INFORMATION Info
 );//操作和进程有关的句柄前的回调函数
@@ -27,6 +27,7 @@ Globals g_Data;
 extern "C"
 NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING)
 {
+	DbgBreakPoint();
 	KdPrint(("Welcome to ProtectProcess Kernel"));
 	//初始化全局变量结构体
 	g_Data.Init();
@@ -47,7 +48,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING)
 	OB_CALLBACK_REGISTRATION reg = {
 		OB_FLT_REGISTRATION_VERSION,//固定值
 		1,//因为我们前面只有一个操作
-		RTL_CONSTANT_STRING(L"1231111.191901"),//高度值，这个只要保证不重复就好,这里是一个unicode字符串
+		RTL_CONSTANT_STRING(L"1231111.111"),//高度值，这个只要保证不重复就好,这里是一个unicode字符串
 		NULL,//系统设置，这个传个null就行
 		operations//要进行的操作的记录数组
 	};
@@ -243,6 +244,7 @@ bool AddProcess(ULONG pid)
 		{
 			g_Data.Pids[i] = pid;
 			g_Data.PidsCount++;
+			BreakProcessLink(pid);
 			return true;
 		}
 	}
