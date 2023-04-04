@@ -12,5 +12,6 @@ struct Globals {
 	void Init()
 	{
 		Lock.Init();	//初始化快速互斥体，这里不用AutoLock是为了手动来处理，因为这个是会作为一个全局一直存在的。
+		memset(Pids, 0x0, MaxPids);
 	}
 };

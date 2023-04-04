@@ -108,7 +108,7 @@ void ProcessProtectUnload(PDRIVER_OBJECT DriverObject) {
 }
 
 
-OB_PREOP_CALLBACK_STATUS OnPreOpenProcess(PVOID RegistrationContext,POB_PRE_OPERATION_INFORMATION Info)
+OB_PREOP_CALLBACK_STATUS OnPreOpenProcess(PVOID RegistrationContext, POB_PRE_OPERATION_INFORMATION Info)
 {
 	UNREFERENCED_PARAMETER(RegistrationContext);
 	if (Info->KernelHandle)
@@ -138,10 +138,10 @@ NTSTATUS ProcessProtectDeviceIoControl(PDEVICE_OBJECT pDevObj, PIRP pIrp)
 	auto stack = IoGetCurrentIrpStackLocation(pIrp);//获取当前的IO栈
 	auto status = STATUS_SUCCESS;
 	auto len = 0;
-	
+
 	//根据不同的IO操作码实现不同的操作
 	switch (stack->Parameters.DeviceIoControl.IoControlCode)
-	{                                                                                                                                                                                                                                                                
+	{
 	case IOCTL_PROCESS_PROTECT_BY_PID:
 	{//添加pid的操作码
 		auto size = stack->Parameters.DeviceIoControl.InputBufferLength;
@@ -162,16 +162,13 @@ NTSTATUS ProcessProtectDeviceIoControl(PDEVICE_OBJECT pDevObj, PIRP pIrp)
 				status = STATUS_INVALID_PARAMETER;
 				break;
 			}
-			//判断Pid是否为0，为0就报错
 			if (FindProcess(pid))
 				continue;
-			//有这个pid就直接跳过
 			if (g_Data.PidsCount == MaxPids)
 			{
 				status = STATUS_TOO_MANY_CONTEXT_IDS;
 				break;
 			}
-			//pid满了直接报错退出
 			if (!AddProcess(data[i]))
 			{
 				status = STATUS_UNSUCCESSFUL;
@@ -184,7 +181,8 @@ NTSTATUS ProcessProtectDeviceIoControl(PDEVICE_OBJECT pDevObj, PIRP pIrp)
 		break;
 	}
 	case IOCTL_PROCESS_UNPROTECT_BY_PID:
-	{//取消pid的操作码
+	{
+		//删除被保护的进程
 		auto size = stack->Parameters.DeviceIoControl.InputBufferLength;
 		if (size % sizeof(ULONG) != 0)
 		{
@@ -200,29 +198,34 @@ NTSTATUS ProcessProtectDeviceIoControl(PDEVICE_OBJECT pDevObj, PIRP pIrp)
 		{
 			if (g_Data.PidsCount == 0)
 				break;
-			//如果说没有了，就直接退出
-
 			auto pid = data[i];
 			if (pid == 0)
 			{
 				status = STATUS_INVALID_PARAMETER;
 				break;
 			}
-			//如果为0就不合法
 			if (!RemoveProcess(pid))
 				continue;
-			//删除失败就跳过
 			len += sizeof(ULONG);
-
 		}
 		break;
 	}
 	case IOCTL_PROCESS_PROTECT_CLEAR:
-	{//清零pid的操作码
+	{
+		//清零被保护的进程
 		AutoLock<FastMutex> lock(g_Data.Lock);
-		::memset(&g_Data.Pids, 0, sizeof(g_Data.Pids));
-		g_Data.PidsCount = 0;
-		//直接清零
+		for (int i = 0; i < MaxPids; i++)
+		{
+			if (g_Data.PidsCount <= 0)
+				break;
+			if (g_Data.Pids[i] == 0)
+				continue;
+			status = AddProcessLink(g_Data.Pids[i]);
+			if (!NT_SUCCESS(status))
+				continue;
+			g_Data.Pids[i] = 0;
+			g_Data.PidsCount--;
+		}
 		break;
 	}
 	default:
@@ -257,6 +260,7 @@ bool RemoveProcess(ULONG pid)
 	{
 		if (g_Data.Pids[i] == pid)
 		{
+			AddProcessLink(pid);
 			g_Data.Pids[i] = 0;
 			g_Data.PidsCount--;
 			return true;
